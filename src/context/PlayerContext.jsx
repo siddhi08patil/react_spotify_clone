@@ -8,67 +8,84 @@ const PlayerContextProvider = (props) => {
   const seekBg = useRef();
   const seekBar = useRef();
 
-  const [track,setTrack]= useState(songsData[0])
-  const [playStatus,setPlayStatus]=useState(false)
-  const [time , setTime] =useState({
-    currentTime:{
-      second:0,
-      minute:0
-    },
-    totalTime:{
-      second:0,
-      minute:0
+  const [track, setTrack] = useState(songsData[0]);
+  const [playStatus, setPlayStatus] = useState(false);
+  const [time, setTime] = useState({
+    currentTime: { second: 0, minute: 0 },
+    totalTime: { second: 0, minute: 0 },
+  });
+
+  const play = () => {
+    audioRef.current.play().catch((error) => {
+      console.error("Error playing audio:", error);
+    });
+    setPlayStatus(true);
+  };
+
+  const pause = () => {
+    audioRef.current.pause();
+    setPlayStatus(false);
+  };
+
+  const playWithId = (id) => {
+    setTrack(songsData[id]);
+    audioRef.current.play().catch((error) => {
+      console.error("Error playing audio:", error);
+    });
+    setPlayStatus(true);
+  };
+
+  const previous = () => {
+    if (track.id > 0) {
+      audioRef.current.pause();
+      setTrack(songsData[track.id - 1]);
+      audioRef.current.play().catch((error) => {
+        console.error("Error playing audio:", error);
+      });
+      setPlayStatus(true);
     }
-  })
-  const play=()=>{
-    audioRef.current.play();
-    setPlayStatus(true)
-  }
-  const pause=()=>{
-    audioRef.current.pause()
-    setPlayStatus(false)
-  }
-  const playWithId=async(id)=>{
-    await setTrack(songsData[id])
-    await audioRef.current.play()
-    setPlayStatus(true)
-  }
-  const previous=async()=>{
-    if(track.id>0){
-      await setTrack(songsData[track.id-1])
-      await audioRef.current.play()
-      setPlayStatus(true)
+  };
+
+  const next = () => {
+    if (track.id < songsData.length - 1) {
+      audioRef.current.pause();
+      setTrack(songsData[track.id + 1]);
+      audioRef.current.play().catch((error) => {
+        console.error("Error playing audio:", error);
+      });
+      setPlayStatus(true);
     }
-  }
-  const next=async()=>{
-    if(track.id<songsData.length-1){
-      await setTrack(songsData[track.id+1])
-      await audioRef.current.play()
-      setPlayStatus(true)
+  };
+
+  const seekSong = (e) => {
+    if (seekBg.current) {
+      audioRef.current.currentTime =
+        (e.nativeEvent.offsetX / seekBg.current.offsetWidth) * audioRef.current.duration;
     }
-  }
-  const seekSong=async(e)=>{
-    audioRef.current.currentTime=((e.nativeEvent.offsetX/seekBg.current.offsetWidth)*audioRef.current.duration)
-  }
+  };
 
   useEffect(() => {
-    setTimeout(()=>{
-      audioRef.current.ontimeupdate = ()=>{
-        seekBar.current.style.width = (Math.floor(audioRef.current.currentTime/audioRef.current.duration*100))+"%";
-        setTime({
-          currentTime:{
-            second:Math.floor(audioRef.current.currentTime%60),
-            minute:Math.floor(audioRef.current.currentTime/60)
-          },
-          totalTime:{
-            second:Math.floor(audioRef.current.duration%60),
-            minute:Math.floor(audioRef.current.duration/60)
-          }
-        })
-      }
-    },1000)
-  }, [audioRef])
-  
+    const handleTimeUpdate = () => {
+      seekBar.current.style.width =
+        (Math.floor(audioRef.current.currentTime / audioRef.current.duration) * 100) + "%";
+      setTime({
+        currentTime: {
+          second: Math.floor(audioRef.current.currentTime % 60),
+          minute: Math.floor(audioRef.current.currentTime / 60),
+        },
+        totalTime: {
+          second: Math.floor(audioRef.current.duration % 60),
+          minute: Math.floor(audioRef.current.duration / 60),
+        },
+      });
+    };
+
+    audioRef.current.ontimeupdate = handleTimeUpdate;
+
+    return () => {
+      audioRef.current.ontimeupdate = null;
+    };
+  }, []);
 
   const contextValue = {
     audioRef,
@@ -85,14 +102,10 @@ const PlayerContextProvider = (props) => {
     playWithId,
     previous,
     next,
-    seekSong
+    seekSong,
   };
 
-  return (
-    <PlayerContext.Provider value={contextValue}>
-      {props.children}
-    </PlayerContext.Provider>
-  );
+  return <PlayerContext.Provider value={contextValue}>{props.children}</PlayerContext.Provider>;
 };
 
 export default PlayerContextProvider;
